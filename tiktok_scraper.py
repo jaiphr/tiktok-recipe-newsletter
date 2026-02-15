@@ -149,19 +149,3 @@ def get_video_comments(video_id, max_comments=50):
     return get_video_comments_simple(video_id)
 
 
-### Step 2: Make Sure requirements.txt is Updated
-
-
-# TikTok Recipe Newsletter Dependencies (Simplified)
-
-# AI for recipe extraction
-anthropic==0.39.0
-
-# Email service
-resend==2.0.0
-
-# Web requests
-requests==2.31.0
-
-# Utilities
-python-dotenv==1.0.0
