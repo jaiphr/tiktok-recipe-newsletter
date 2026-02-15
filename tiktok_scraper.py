@@ -149,16 +149,11 @@ def get_video_comments(video_id, max_comments=50):
     return get_video_comments_simple(video_id)
 
 
-6. Click **"Commit changes"**
-7. Click **"Commit changes"** again
-
 ---
 
 ### Step 2: Make Sure requirements.txt is Updated
 
-1. Click **`requirements.txt`**
-2. Make sure it looks like this (NO TikTokApi, NO playwright):
-```
+
 # TikTok Recipe Newsletter Dependencies (Simplified)
 
 # AI for recipe extraction
