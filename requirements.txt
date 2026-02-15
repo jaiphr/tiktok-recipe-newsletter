@@ -1,7 +1,7 @@
 # TikTok Recipe Newsletter Dependencies
 
 # TikTok API wrapper
-TikTokApi==6.3.1
+TikTokApi==6.5.2
 playwright==1.40.0
 
 # AI for recipe extraction
