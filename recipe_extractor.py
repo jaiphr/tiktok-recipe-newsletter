@@ -22,7 +22,48 @@ def extract_recipe_with_claude(caption, comments):
     Returns:
         Structured recipe dictionary
     """
-    client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
+# Initialize Anthropic client with explicit parameters only
+api_key = os.environ.get("ANTHROPIC_API_KEY")
+if not api_key:
+    print("      Error: ANTHROPIC_API_KEY not found in environment")
+    return None
+
+try:
+    client = anthropic.Anthropic(api_key=api_key)
+except Exception as e:
+    print(f"      Error initializing Anthropic client: {e}")
+    return None
+```
+
+6. Commit changes
+
+---
+
+### Fix 2: Update requirements.txt (CRITICAL!)
+
+Your requirements.txt still has TikTokApi! It needs to be simplified.
+
+**Download the fixed `requirements.txt` above ⬆️** and replace yours, OR:
+
+1. Go to your repo
+2. Click **`requirements.txt`**
+3. Click **pencil** ✏️
+4. Delete EVERYTHING
+5. Paste this:
+```
+# TikTok Recipe Newsletter Dependencies (Simplified)
+
+# AI for recipe extraction
+anthropic==0.40.0
+
+# Email service
+resend==2.0.0
+
+# Web requests
+requests==2.31.0
+
+# Utilities
+python-dotenv==1.0.0
     
     # Combine caption and top comments
     comment_text = "\n".join([f"- {c['text']}" for c in comments[:20]])
