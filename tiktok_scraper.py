@@ -147,7 +147,7 @@ def get_trending_recipe_videos(count=5):
 def get_video_comments(video_id, max_comments=50):
     """Wrapper for backwards compatibility"""
     return get_video_comments_simple(video_id)
-```
+
 
 6. Click **"Commit changes"**
 7. Click **"Commit changes"** again
