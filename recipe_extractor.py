@@ -1,127 +1,149 @@
 """
-Recipe Extractor
-Extracts structured recipe data from TikTok videos using:
-- Video captions
-- Comments (creators often post recipes here!)
-- Claude API to structure the data
+Simplified TikTok Scraper - Manual URL Version
+Instead of automatically finding trending videos, you manually specify which videos to use.
+This is more reliable and gives you control over recipe quality!
 """
 
-import os
-import anthropic
-from tiktok_scraper import get_video_comments
+import requests
+import re
+import json
 
 
-
-def extract_recipe_with_claude(caption, comments):
+def get_video_data_from_url(video_url):
     """
-    Uses Claude API to extract and structure recipe from captions and comments
+    Extract video data from a TikTok URL by scraping the page
     
     Args:
-        caption: Video caption text
-        comments: List of comment dictionaries
+        video_url: Full TikTok video URL (e.g., https://www.tiktok.com/@username/video/1234567890)
     
     Returns:
-        Structured recipe dictionary
+        Dictionary with video data
     """
-    client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
-    
-    # Combine caption and top comments
-    comment_text = "\n".join([f"- {c['text']}" for c in comments[:20]])
-    
-    prompt = f"""I have data from a TikTok recipe video. The creator often posts the full recipe in the caption or in the comments. Please extract a complete recipe from this information.
-
-VIDEO CAPTION:
-{caption}
-
-COMMENTS (creators often post recipes here):
-{comment_text}
-
-Please extract and structure this into a recipe with the following JSON format:
-{{
-  "title": "Recipe name",
-  "description": "Brief description",
-  "prep_time": "e.g., 10 minutes (or null if not mentioned)",
-  "cook_time": "e.g., 20 minutes (or null if not mentioned)",
-  "servings": "e.g., 4 servings (or null if not mentioned)",
-  "ingredients": [
-    "1 cup flour",
-    "2 eggs",
-    etc.
-  ],
-  "instructions": [
-    "Step 1: Do this",
-    "Step 2: Do that",
-    etc.
-  ],
-  "tips": ["Any helpful tips mentioned (or empty array)"]
-}}
-
-Important: Look carefully in the comments - creators often post the full recipe as a comment!
-
-If you cannot find a complete recipe (at minimum title and ingredients), return null. Only return the JSON, no other text."""
-
-    message = client.messages.create(
-        model="claude-sonnet-4-20250514",
-        max_tokens=1000,
-        messages=[
-            {"role": "user", "content": prompt}
-        ]
-    )
-    
-    response_text = message.content[0].text.strip()
-    
-    # Parse JSON response
-    import json
     try:
-        # Remove markdown code blocks if present
-        if response_text.startswith("```"):
-            response_text = response_text.split("```")[1]
-            if response_text.startswith("json"):
-                response_text = response_text[4:]
+        # Extract username and video ID from URL
+        username_match = re.search(r'@([^/]+)', video_url)
+        video_id_match = re.search(r'/video/(\d+)', video_url)
         
-        recipe = json.loads(response_text.strip())
-        return recipe
-    except json.JSONDecodeError:
-        print("      Warning: Could not parse recipe from Claude response")
+        if not username_match or not video_id_match:
+            print(f"   Warning: Could not parse URL: {video_url}")
+            return None
+        
+        username = username_match.group(1)
+        video_id = video_id_match.group(1)
+        
+        # Fetch the page
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        }
+        response = requests.get(video_url, headers=headers)
+        response.raise_for_status()
+        
+        # Try to extract caption from the page HTML
+        caption_match = re.search(r'"desc":"([^"]+)"', response.text)
+        caption = caption_match.group(1) if caption_match else "No caption found"
+        
+        # Decode unicode escapes in caption
+        caption = caption.encode().decode('unicode_escape')
+        
+        # Try to extract stats
+        likes_match = re.search(r'"diggCount":(\d+)', response.text)
+        views_match = re.search(r'"playCount":(\d+)', response.text)
+        
+        video_data = {
+            'id': video_id,
+            'title': caption[:100] if caption else "Recipe Video",
+            'author': username,
+            'video_url': video_url,
+            'likes': int(likes_match.group(1)) if likes_match else 0,
+            'views': int(views_match.group(1)) if views_match else 0,
+            'shares': 0,
+            'caption': caption,
+            'hashtags': [],
+            'music': None,
+        }
+        
+        return video_data
+        
+    except Exception as e:
+        print(f"   Error fetching {video_url}: {e}")
         return None
 
 
-def extract_recipe_from_video(video_data):
+def get_video_comments_simple(video_id):
     """
-    Main function to extract recipe from a TikTok video's caption and comments
+    Simplified comment fetching - returns empty list for now
+    You can add comments manually in recipe_urls.json if needed
     
     Args:
-        video_data: Dictionary containing video information
+        video_id: TikTok video ID
     
     Returns:
-        Structured recipe dictionary
+        List of comment dictionaries
     """
-    recipe = None
+    # TikTok's comment API requires authentication, so we'll skip this
+    # The recipe is usually in the caption anyway!
+    return []
+
+
+def load_recipe_urls():
+    """
+    Load TikTok video URLs from recipe_urls.json
     
+    Returns:
+        List of video URLs
+    """
     try:
-        # Get comments (creators often post recipes here!)
-        print(f"      Fetching comments...")
-        comments = get_video_comments(video_data['id'], max_comments=50)
+        with open('recipe_urls.json', 'r') as f:
+            data = json.load(f)
+            return data.get('urls', [])
+    except FileNotFoundError:
+        print("   Warning: recipe_urls.json not found. Creating example file...")
         
-        # Extract recipe using Claude from caption + comments
-        print(f"      Extracting recipe with Claude...")
-        recipe = extract_recipe_with_claude(
-            video_data['caption'],
-            comments
-        )
+        # Create example file
+        example_data = {
+            "urls": [
+                "https://www.tiktok.com/@feelgoodfoodie/video/7234567890123456789",
+                "https://www.tiktok.com/@brunchwithbabs/video/7234567890123456790",
+                "https://www.tiktok.com/@cookingwithshereen/video/7234567890123456791",
+            ],
+            "instructions": "Add TikTok recipe video URLs here. Find them by browsing TikTok and copying the video link!"
+        }
         
-        if recipe:
-            # Add metadata
-            recipe['source'] = {
-                'platform': 'TikTok',
-                'author': video_data['author'],
-                'url': video_data['video_url'],
-                'likes': video_data['likes'],
-                'views': video_data['views']
-            }
+        with open('recipe_urls.json', 'w') as f:
+            json.dump(example_data, f, indent=2)
+        
+        return example_data['urls']
+
+
+def get_trending_recipe_videos(count=5):
+    """
+    Get recipe videos from manually specified URLs
     
-    except Exception as e:
-        print(f"      Error extracting recipe: {e}")
-        recipe = None
+    Args:
+        count: Maximum number of videos to return
     
-    return recipe
+    Returns:
+        List of video data dictionaries
+    """
+    print("   Loading TikTok URLs from recipe_urls.json...")
+    
+    urls = load_recipe_urls()
+    
+    if not urls:
+        print("   Warning: No URLs found in recipe_urls.json")
+        return []
+    
+    videos = []
+    for url in urls[:count]:
+        print(f"   Fetching: {url}")
+        video_data = get_video_data_from_url(url)
+        if video_data:
+            videos.append(video_data)
+    
+    return videos
+
+
+# Keep this for backwards compatibility
+def get_video_comments(video_id, max_comments=50):
+    """Wrapper for backwards compatibility"""
+    return get_video_comments_simple(video_id)
