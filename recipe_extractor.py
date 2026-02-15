@@ -22,18 +22,17 @@ def extract_recipe_with_claude(caption, comments):
     Returns:
         Structured recipe dictionary
     """
-# Initialize Anthropic client with explicit parameters only
-api_key = os.environ.get("ANTHROPIC_API_KEY")
-if not api_key:
-    print("      Error: ANTHROPIC_API_KEY not found in environment")
-    return None
-
-try:
-    client = anthropic.Anthropic(api_key=api_key)
-except Exception as e:
-    print(f"      Error initializing Anthropic client: {e}")
-    return None
-
+    # Initialize Anthropic client with explicit parameters only
+    api_key = os.environ.get("ANTHROPIC_API_KEY")
+    if not api_key:
+        print("      Error: ANTHROPIC_API_KEY not found in environment")
+        return None
+    
+    try:
+        client = anthropic.Anthropic(api_key=api_key)
+    except Exception as e:
+        print(f"      Error initializing Anthropic client: {e}")
+        return None
     
     # Combine caption and top comments
     comment_text = "\n".join([f"- {c['text']}" for c in comments[:20]])
@@ -70,29 +69,34 @@ Important: Look carefully in the comments - creators often post the full recipe 
 
 If you cannot find a complete recipe (at minimum title and ingredients), return null. Only return the JSON, no other text."""
 
-    message = client.messages.create(
-        model="claude-sonnet-4-20250514",
-        max_tokens=1000,
-        messages=[
-            {"role": "user", "content": prompt}
-        ]
-    )
-    
-    response_text = message.content[0].text.strip()
-    
-    # Parse JSON response
-    import json
     try:
-        # Remove markdown code blocks if present
-        if response_text.startswith("```"):
-            response_text = response_text.split("```")[1]
-            if response_text.startswith("json"):
-                response_text = response_text[4:]
+        message = client.messages.create(
+            model="claude-sonnet-4-20250514",
+            max_tokens=1000,
+            messages=[
+                {"role": "user", "content": prompt}
+            ]
+        )
         
-        recipe = json.loads(response_text.strip())
-        return recipe
-    except json.JSONDecodeError:
-        print("      Warning: Could not parse recipe from Claude response")
+        response_text = message.content[0].text.strip()
+        
+        # Parse JSON response
+        import json
+        try:
+            # Remove markdown code blocks if present
+            if response_text.startswith("```"):
+                response_text = response_text.split("```")[1]
+                if response_text.startswith("json"):
+                    response_text = response_text[4:]
+            
+            recipe = json.loads(response_text.strip())
+            return recipe
+        except json.JSONDecodeError:
+            print("      Warning: Could not parse recipe from Claude response")
+            return None
+            
+    except Exception as e:
+        print(f"      Error calling Claude API: {e}")
         return None
 
 
